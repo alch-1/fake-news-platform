@@ -6,3 +6,4 @@ Technologies used:
 - Python:
   - Numpy
   - Keras with TensorFlow backend
+  - Matplotlib
