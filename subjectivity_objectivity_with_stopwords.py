@@ -1,4 +1,13 @@
-# simple MLP
+
+# coding: utf-8
+
+# In[ ]:
+
+
+# MLP for detecting objectivity/subjectivity of a piece of text
+
+# In[24]:
+
 
 import random
 import os
@@ -9,6 +18,15 @@ from keras.layers import Dense, Dropout, Activation
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+import re
+import string
+from nltk.corpus import stopwords # stopwords: words that don't really have any meaning (for this MLP)
+                                  # only there to make things grammatically correct.
+                                  # eg. words like 'the', 'for', 'is', etc.
+
+
+# In[25]:
+
 
 data_path_subj = r"C:\Users\--\Documents\GitHub\fake-news-authentication-platform\subjectivity-dataset\subj.txt" # subjective datasets' file path
 data_path_obj = r"C:\Users\--\Documents\GitHub\fake-news-authentication-platform\subjectivity-dataset\obj.txt" # objective datasets' file path
@@ -17,29 +35,48 @@ data_path_obj = r"C:\Users\--\Documents\GitHub\fake-news-authentication-platform
 # data_path_obj = os.path.join(os.path.dirname(__file__), 'subjectivity-dataset', 'obj.txt')
 # not using __file__ because it doesn't work with jupyter
 
+def clean_text(text):
+    text = str(text).replace("\n", "") # get rid of all newlines
+    exclude = set(string.punctuation) # exclude = string of all punctuations
+    text = ''.join(ch for ch in text if ch not in exclude) # we only want words, not punctuation.
+    text = text.split(" ") # turn it into a list so that we can iterate over it.
+    cleaned_text = [i for i in text if i not in stopwords.words("english")]
+    cleaned_text = list(filter(None, cleaned_text)) # get rid of all the empty strings ('') in the list
+    return cleaned_text
+
 dataset = []
 
+with open(data_path_subj, 'r') as file:
+    for line in file:
+        dataset.extend([(clean_text(line), 0)]) # 0 is the label for subjective
+
+with open(data_path_obj, 'r') as file:
+    for line in file:
+        dataset.extend([(clean_text(line), 1)]) # 1 is the label for objective
+
+'''
 with open(data_path_subj, 'r') as file:
     rawdata = file.read().split('\n') # file.read() returns a string, but with .split(), we turn it into a list.
     dataset.extend([(e, 0) for e in rawdata]) # 0: subj
 with open(data_path_obj, 'r') as file:
     rawdata = file.read().split('\n')
     dataset.extend([(e, 1) for e in rawdata]) # 1: obj
+'''
 
 random.shuffle(dataset)
 train = int(0.9 * len(dataset)) # use 90% of the data for training...
-test = len(dataset) - train # ...and 10% for testing.
-train_set = dataset[0: min(train, len(dataset))]
+test = len(dataset) - train # ...and 10% for testing. # int(0.1 * len(dataset))
+train_set = dataset[0: min(train, len(dataset))] # [0:train] 
 test_set = dataset[(-min(test, len(dataset))-1): -1]
 
-training_set_data = [i[0] for i in train_set] # x_train
-training_set_labels = [i[1] for i in train_set] # y_train
-testing_set_data = [i[0] for i in test_set] # x_val
-testing_set_labels = [i[1] for i in test_set] # y_val
+training_set_data = [i[0] for i in train_set] # x_train # [movie review]
+training_set_labels = [i[1] for i in train_set] # y_train # [0, 1]
+testing_set_data = [i[0] for i in test_set] # x_val # [movie review]
+testing_set_labels = [i[1] for i in test_set] # y_val # [0, 1]
 
 max_words = 5000
 batch_size = 256
-epochs = 10
+epochs = 10 # number of entire runs
 
 # load dataset
 x_train, y_train, x_val, y_val = training_set_data, training_set_labels, testing_set_data, testing_set_labels 
@@ -77,8 +114,9 @@ model_log = model.fit(x_train, y_train,
                     verbose=1,
                     validation_split=0.1)
 
-%matplotlib inline
-%config InlineBackend.figure_format = 'retina'
+# visualise results
+get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().run_line_magic('config', "InlineBackend.figure_format = 'retina'")
 
 plt.plot(model_log.history['acc'])
 plt.plot(model_log.history['val_acc'])
@@ -97,14 +135,19 @@ plt.legend(['train', 'test'], loc='upper left')
 plt.show()
 
 
+
+
+# In[26]:
+
+
 # draw confusion matrix
 from sklearn.metrics import classification_report, confusion_matrix
 import itertools, pickle
 
 classes = ["positive", "negative"]
 
-Y_test = np.argmax(test_y, axis=1) # Convert one-hot to index
-y_pred = model.predict(test_x)
+Y_test = np.argmax(y_val, axis=1) # Convert one-hot to index
+y_pred = model.predict(x_val)
 y_pred_class = np.argmax(y_pred,axis=1)
 cnf_matrix = confusion_matrix(Y_test, y_pred_class)
 print(classification_report(Y_test, y_pred_class, target_names=classes))
@@ -146,3 +189,4 @@ def plot_confusion_matrix(cm, labels,
 
 plt.figure(figsize=(20,10))
 plot_confusion_matrix(cnf_matrix, labels=classes)
+
