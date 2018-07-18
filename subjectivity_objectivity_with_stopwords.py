@@ -6,7 +6,8 @@
 
 # MLP for detecting objectivity/subjectivity of a piece of text
 
-# In[24]:
+
+# In[1]:
 
 
 import random
@@ -25,7 +26,7 @@ from nltk.corpus import stopwords # stopwords: words that don't really have any 
                                   # eg. words like 'the', 'for', 'is', etc.
 
 
-# In[25]:
+# In[2]:
 
 
 data_path_subj = r"C:\Users\--\Documents\GitHub\fake-news-authentication-platform\subjectivity-dataset\subj.txt" # subjective datasets' file path
@@ -41,15 +42,15 @@ def clean_text(text):
     text = ''.join(ch for ch in text if ch not in exclude) # we only want words, not punctuation.
     text = text.split(" ") # turn it into a list so that we can iterate over it.
     cleaned_text = [i for i in text if i not in stopwords.words("english")]
-    cleaned_text = list(filter(None, cleaned_text)) # get rid of all the empty strings ('') in the list
-    return cleaned_text
+    cleaned_text = list(filter(None, cleaned_text)) # get rid of all the empty strings ('') in the list    
+    return ' '.join(cleaned_text)
 
 dataset = []
 
 with open(data_path_subj, 'r') as file:
     for line in file:
         dataset.extend([(clean_text(line), 0)]) # 0 is the label for subjective
-
+        
 with open(data_path_obj, 'r') as file:
     for line in file:
         dataset.extend([(clean_text(line), 1)]) # 1 is the label for objective
@@ -65,18 +66,18 @@ with open(data_path_obj, 'r') as file:
 
 random.shuffle(dataset)
 train = int(0.9 * len(dataset)) # use 90% of the data for training...
-test = len(dataset) - train # ...and 10% for testing. # int(0.1 * len(dataset))
-train_set = dataset[0: min(train, len(dataset))] # [0:train] 
+test = len(dataset) - train # ...and 10% for testing.
+train_set = dataset[0: min(train, len(dataset))]
 test_set = dataset[(-min(test, len(dataset))-1): -1]
 
-training_set_data = [i[0] for i in train_set] # x_train # [movie review]
-training_set_labels = [i[1] for i in train_set] # y_train # [0, 1]
-testing_set_data = [i[0] for i in test_set] # x_val # [movie review]
-testing_set_labels = [i[1] for i in test_set] # y_val # [0, 1]
+training_set_data = [i[0] for i in train_set] # x_train
+training_set_labels = [i[1] for i in train_set] # y_train
+testing_set_data = [i[0] for i in test_set] # x_val
+testing_set_labels = [i[1] for i in test_set] # y_val
 
 max_words = 5000
 batch_size = 256
-epochs = 10 # number of entire runs
+
 
 # load dataset
 x_train, y_train, x_val, y_val = training_set_data, training_set_labels, testing_set_data, testing_set_labels 
@@ -89,19 +90,30 @@ x_val = tokenizer.texts_to_matrix(x_val)
 y_train = keras.utils.to_categorical(y_train, 2)
 y_val = keras.utils.to_categorical(y_val, 2)
 
+
+
+# In[3]:
+
+
 # build model
+from keras import optimizers
+
+epochs = 50
+
 model = Sequential()
 
 model.add(Dense(512, input_shape=(max_words,)))
 model.add(Activation('relu'))
 
-model.add(Dropout(0.5))
+model.add(Dropout(0.5)) # 0.25 is the 'sweet spot'
 
 model.add(Dense(2))
 model.add(Activation('softmax'))
 
+# losses: categorical_crossentropy, adam, 0.24 dropout -> accuracy was 0.85 and 0.88
+sgd = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 model.compile(loss='categorical_crossentropy',
-              optimizer='adam',
+              optimizer=sgd,
               metrics=['accuracy'])
 
               # show graph of loss and accuracy
@@ -137,7 +149,7 @@ plt.show()
 
 
 
-# In[26]:
+# In[4]:
 
 
 # draw confusion matrix
